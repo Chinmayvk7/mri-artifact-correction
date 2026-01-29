@@ -57,7 +57,15 @@ class FastMRILoader:
 
         with h5py.File(h5_file_path, 'r') as h5_file:
             kspace_raw = h5_file['kspace'][slice_index]
-            kspace = kspace_raw['real'] + 1j* kspace_raw['imag']
+        
+        # kspace = kspace_raw['real'] + 1j* kspace_raw['imag']
+        
+            if hasattr(kspace_raw, 'dtype') and kspace_raw.dtype.names:
+                kspace = kspace_raw['real'] + 1j * kspace_raw['imag']  # Synthetic data
+            else:
+                kspace = np.array(kspace_raw)  # Real FastMRI data
+
+            
             image = np.array(h5_file['reconstruction_rss'][slice_index])
         return kspace.astype(np.complex64), image.astype(np.float32)   # for memomry efficiency we keep it 8bytes total per complex number and upto 7 decimal digits
 
@@ -86,7 +94,14 @@ class FastMRILoader:
 
         with h5py.File(h5_file_path, 'r') as h5_file:
             kspace_raw = h5_file['kspace'][:]                      # Load the entire dataset 
-            kspace_volume = kspace_raw['real'] + 1j* kspace_raw['imag']
+            
+            #kspace_volume = kspace_raw['real'] + 1j* kspace_raw['imag']
+            
+            if hasattr(kspace_raw, 'dtype') and kspace_raw.dtype.names:
+                kspace_volume = kspace_raw['real'] + 1j * kspace_raw['imag']
+            else:
+                kspace_volume = np.array(kspace_raw)
+
             image_volume = np.array(h5_file['reconstruction_rss'][:])
 
             
