@@ -1,0 +1,26 @@
+# Dataset files - TOO BIG for GitHub
+*.tar.xz
+*.tar.gz
+*.h5
+data/singlecoil_test/
+data/singlecoil_train/
+data/singlecoil_val/
+
+# Outputs
+outputs/figures/*.png
+outputs/models/*.pth
+outputs/models/*.pt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
