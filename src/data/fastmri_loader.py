@@ -163,7 +163,7 @@ if __name__ == "__main__":                        # Test the FASTMRI loader.
     print("="*60)
     
     
-    data_path = "data/singlecoil_test"    # Initialize loader
+    data_path = "data/singlecoil_val"    # Initialize loader
     
     try:
         loader = FastMRILoader(data_path)
@@ -220,6 +220,6 @@ if __name__ == "__main__":                        # Test the FASTMRI loader.
     except Exception as e:
         print(f"\n✗ Error: {str(e)}")
         print("\nTroubleshooting:")
-        print("1. Check that fastMRI data is in: data/singlecoil_test/")
+        print("1. Check that fastMRI data is in: data/singlecoil_val")
         print("2. Verify .h5 files exist in that directory")
         print("3. Ensure you have h5py installed: pip install h5py")
