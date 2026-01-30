@@ -19,151 +19,176 @@ logger = logging.getLogger(__name__)
 
 
 
-# INVERSE FFT IMPLEMENTATION FROM SCRATCH
-def fft_1d_scratch(x: np.ndarray) -> np.ndarray:
-    """
-    1D Fast Fourier Transform implemented from scratch using Cooley-Tukey algorithm.
-    
-    This is the FORWARD FFT needed for the inverse FFT implementation.
-    
-        x: Input signal [N] (complex or real)
-        
-    Returns:
-        Frequency domain representation [N] (complex)
-        
-    Algorithm: Recursive Cooley-Tukey FFT (divide-and-conquer)
-    Time complexity: O(N log N) instead of O(N²) for naive DFT
-    """
-    N = len(x)
-    
-    # Base case: DFT for small N
-    if N <= 1:
-        return x
-    
-    if N % 2 != 0:
-        # Fall back to naive DFT for odd sizes
-        return dft_naive(x)
-    
-    # Divide: split into even and odd indices
-    even = fft_1d_scratch(x[0::2])  # x[0], x[2], x[4], ...
-    odd = fft_1d_scratch(x[1::2])   # x[1], x[3], x[5], ...
-    
-    # Conquer: combine results
-    # factors: W_N^k = exp(-2πi * k/N)
-    T = np.exp(-2j * np.pi * np.arange(N // 2) / N)
-    
-    # First half: X[k] = Even[k] + W_N^k * Odd[k]
-    # Second half: X[k+N/2] = Even[k] - W_N^k * Odd[k]
-    return np.concatenate([
-        even + T * odd,
-        even - T * odd
-    ])
+import numpy as np
 
 
-def ifft_1d_scratch(X: np.ndarray) -> np.ndarray:
-    """
-    1D Inverse Fast Fourier Transform implemented from scratch.
-    
-    Converts frequency domain back to time/space domain.
-    
-    Args:
-        X: Frequency domain signal [N] (complex)
-        
-    Returns:
-        Time domain signal [N] (complex)
-        
-    Key difference from FFT:
-    - Use positive exponent: exp(+2πi*k/N) instead of exp(-2πi*k/N)
-    - Divide by N at the end
-    
-    Mathematical formula:
-    x[n] = (1/N) * sum(X[k] * exp(2πi*kn/N)) for k=0 to N-1
-    
-    Eqn = IFFT(X) = conj(FFT(conj(X))) / N
-    This lets us reuse FFT code
-    """
-    N = len(X)
-    
-    # IFFT(X) = conj(FFT(conj(X))) / N
-    return np.conj(fft_1d_scratch(np.conj(X))) / N
-
+# NAIVE DFT (FALLBACK FOR ODD SIZES)
 
 def dft_naive(x: np.ndarray) -> np.ndarray:
     """
-    Naive Discrete Fourier Transform (for odd sizes).
-    
-    Time complexity: O(N²) - slow but works for any size.
-    
-    Formula: X[k] = sum(x[n] * exp(-2πi*kn/N)) for n=0 to N-1
+    Naive Discrete Fourier Transform (O(N^2)).
+
+    Used only when input length is odd and cannot be split evenly
+    by the Cooley–Tukey FFT algorithm.
+
+    Formula:
+        X[k] = sum(x[n] * exp(-2πi * k * n / N)) for n = 0 to N-1
     """
     N = len(x)
+
+    # Create index vectors
     n = np.arange(N)
     k = n.reshape((N, 1))
-    
-    # Create DFT matrix: W[k,n] = exp(-2πi*kn/N)
-    W = np.exp(-2j * np.pi * k * n / N)
-    
-    return np.dot(W, x)
 
+    # Construct DFT matrix: W[k,n] = exp(-2πi * k * n / N)
+    W = np.exp(-2j * np.pi * k * n / N)
+
+    # Matrix-vector multiplication gives the DFT
+    return W @ x
+
+
+
+# FORWARD FFT (COOLEY–TUKEY)
+
+def fft_1d_scratch(x: np.ndarray) -> np.ndarray:
+    """
+    Forward 1D Fast Fourier Transform implemented from scratch
+    using the recursive Cooley–Tukey algorithm.
+
+    This is the FORWARD FFT required for inverse FFT construction.
+
+    Algorithm:
+    - Divide input into even and odd indexed samples
+    - Recursively compute FFTs
+    - Combine using twiddle factors
+
+    Time complexity:
+        O(N log N)
+    """
+    N = len(x)
+
+    # Base case: FFT of length 1 is the signal itself
+    if N <= 1:
+        return x
+
+    # If length is odd, fall back to naive DFT
+    if N % 2 != 0:
+        return dft_naive(x)
+
+    # Divide: split signal into even and odd indexed elements
+    even = fft_1d_scratch(x[0::2])  # x[0], x[2], x[4], ...
+    odd  = fft_1d_scratch(x[1::2])  # x[1], x[3], x[5], ...
+
+  
+    # W_N^k = exp(-2πi * k / N)
+    W = np.exp(-2j * np.pi * np.arange(N // 2) / N)
+
+    # Combine:
+    # X[k]       = even[k] + W[k] * odd[k]
+    # X[k+N/2]   = even[k] - W[k] * odd[k]
+    return np.concatenate([
+        even + W * odd,
+        even - W * odd
+    ])
+
+
+
+# INVERSE FFT (IMPLEMENTATION FROM SCRATCH) 
+# We won't be using  # IFFT(X) = conj(FFT(conj(X))) / N and will be implementing IFFT from scratch.
+
+def ifft_1d_scratch(X: np.ndarray) -> np.ndarray:
+    """
+    Explicit recursive 1D Inverse Fast Fourier Transform.
+
+    Key differences from FFT:
+    - Uses POSITIVE exponent: exp(+2πi * k / N)
+    - Normalizes by dividing by N (done gradually as /2 per stage)
+
+    Mathematical definition:
+        x[n] = (1/N) * sum(X[k] * exp(2πi * k * n / N))
+    """
+    N = len(X)
+
+    # Base case
+    if N <= 1:
+        return X
+
+    # Handle odd-sized inputs using naive DFT identity
+    if N % 2 != 0:
+        return np.conj(dft_naive(np.conj(X))) / N
+
+    # Divide: split frequency components
+    even = ifft_1d_scratch(X[0::2])
+    odd  = ifft_1d_scratch(X[1::2])
+
+  
+    W = np.exp(+2j * np.pi * np.arange(N // 2) / N)
+
+    # Combine inverse FFT results
+    result = np.concatenate([
+        even + W * odd,
+        even - W * odd
+    ])
+
+    # Normalize (each recursion level contributes a factor of 1/2)
+    return result / 2
+
+
+
+# 2D INVERSE FFT 
 
 def ifft_2d_scratch(kspace: np.ndarray) -> np.ndarray:
     """
-    2D Inverse Fast Fourier Transform implemented from scratch.
-    
-    Converts 2D k-space (frequency domain) to image space (spatial domain).
-    
-        kspace: 2D k-space data [H, W] (complex)
-        
-    Returns:
-        2D image [H, W] (complex, take abs for magnitude)
-        
-    Algorithm:
-    1. Apply 1D IFFT to each row
-    2. Apply 1D IFFT to each column of the result
-    
-    This is separable: 2D IFFT = IFFT_cols(IFFT_rows(kspace))
+    2D Inverse FFT implemented using separability and again we didn't use the conjugate mtd.
+
+    Property:
+        2D IFFT = IFFT_columns( IFFT_rows(kspace) )
+
+    Steps:
+    1. Apply 1D IFFT along rows
+    2. Apply 1D IFFT along columns
     """
-    height, width = kspace.shape
-    
-    # Step 1: IFFT along rows (horizontal)
-    image_rows = np.zeros_like(kspace, dtype=complex)
-    for i in range(height):
-        image_rows[i, :] = ifft_1d_scratch(kspace[i, :])
-    
-    # Step 2: IFFT along columns (vertical)
+    H, W = kspace.shape
+
+    # Step 1: Apply IFFT to each row
+    temp = np.zeros_like(kspace, dtype=complex)
+    for i in range(H):
+        temp[i, :] = ifft_1d_scratch(kspace[i, :])
+
+    # Step 2: Apply IFFT to each column
     image = np.zeros_like(kspace, dtype=complex)
-    for j in range(width):
-        image[:, j] = ifft_1d_scratch(image_rows[:, j])
-    
+    for j in range(W):
+        image[:, j] = ifft_1d_scratch(temp[:, j])
+
     return image
 
+
+
+# MRI-CORRECT CENTERED IFFT
 
 def ifft2c_scratch(kspace: np.ndarray) -> np.ndarray:
     """
-    Centered 2D Inverse FFT (combines fftshift + ifft2 + ifftshift).
-    
-    This is what we use for MRI reconstruction.
-    
-        kspace: Centered k-space data [H, W]
-        
-    Returns:
-        Image [H, W] (complex, takes kspace for magnitude)
-        
+    Centered 2D Inverse FFT used in MRI reconstruction.
+
+    MRI convention:
+    - k-space is stored with zero-frequency at the center
+
     Steps:
-    1. ifftshift: Move zero-frequency to corner (undo centering)
-    2. ifft2: Transform to image space
-    3. fftshift: Center the result
+    1. ifftshift → move DC component to corner
+    2. Apply 2D inverse FFT
+    3. fftshift → re-center the reconstructed image
     """
-    # Un-center k-space (ifftshift)
-    kspace_shifted = np.fft.ifftshift(kspace)
-    
-    # Apply 2D IFFT
-    image_unshifted = ifft_2d_scratch(kspace_shifted)
-    
-    # Center the image (fftshift)
+    # Undo k-space centering
+    kspace_unshifted = np.fft.ifftshift(kspace)
+
+    # Apply custom 2D IFFT
+    image_unshifted = ifft_2d_scratch(kspace_unshifted)
+
+    # Center the reconstructed image
     image = np.fft.fftshift(image_unshifted)
-    
+
     return image
+
 
 
 class UndersamplingSimulator:          
