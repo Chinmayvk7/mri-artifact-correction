@@ -15,7 +15,7 @@ HOW IT CONNECTS TO OUR EXISTING CODE:
     • Uses our FastMRILoader  → loads .h5 files, returns (kspace, image)
     • Uses our MultiArtifactSimulator → corrupts k-space, returns dict
 
-EXPECTED INTERFACES (must match our existing files):
+    these should match our existing files:
 
     loader = FastMRILoader(data_path)
         loader.file_list                     → list of .h5 filenames
@@ -108,8 +108,6 @@ class FastMRIArtifactDataset(Dataset):
         {
             'corrupted' : FloatTensor [1, H, W]   ← input to the network
             'clean'     : FloatTensor [1, H, W]   ← ground truth target
-            'kspace_clean'     : np array (complex) ← for visualization only
-            'kspace_corrupted' : np array (complex) ← for visualization only
         }
 
     USAGE:
@@ -204,7 +202,7 @@ class FastMRIArtifactDataset(Dataset):
             idx: integer index into slice_index.
 
         Returns:
-            dict with 'corrupted', 'clean' tensors + raw k-space arrays.
+            dict with 'corrupted', 'clean' tensors.
         """
         file_idx, slice_idx = self.slice_index[idx]
 
@@ -245,8 +243,6 @@ class FastMRIArtifactDataset(Dataset):
         return {
             'corrupted':        torch.from_numpy(corrupted_crop).unsqueeze(0),
             'clean':            torch.from_numpy(clean_crop).unsqueeze(0),
-            'kspace_clean':     kspace_clean,      # raw complex — for viz only
-            'kspace_corrupted': kspace_corrupted,
         }
 
 

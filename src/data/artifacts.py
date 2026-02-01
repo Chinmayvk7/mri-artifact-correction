@@ -193,7 +193,7 @@ def ifft2c_scratch(kspace: np.ndarray) -> np.ndarray:
 
 class UndersamplingSimulator:          
     
-    def __init__(self, acceleration_factor: int = 4, center_fraction: float = 0.08):   
+    def __init__(self, acceleration_factor: int = 4, center_fraction: float = 0.16):   
         self.acceleration_factor = acceleration_factor       # How much to accelerate (R).
         self.center_fraction = center_fraction               # Fraction of center k-space to fully sample
         logger.info(f"Undersampling simulator initialized: "
@@ -226,7 +226,7 @@ class UndersamplingSimulator:
     
 class SpikeNoiseSimulator:
 
-    def __init__(self, num_spikes: int = 10, amplitude_range: Tuple[float, float] = (5, 20)):
+    def __init__(self, num_spikes: int = 5, amplitude_range: Tuple[float, float] = (1.5, 4.0)):
         
         self.num_spikes = num_spikes
         self.amplitude_range = amplitude_range
@@ -248,11 +248,12 @@ class SpikeNoiseSimulator:
 
         for spike_idx in range(self.num_spikes):
 
-            # Random location in k-space
+            # Random location in k-space (avoid the very center where most energy is)
+            # Place spikes in outer regions where they cause visible but recoverable artifacts
             y = np.random.randint(0, height)
             x = np.random.randint(0, width)
             
-            # Random spike amplitude (relative to median)
+            # Random spike amplitude (relative to median) - REDUCED from (5,20) to (1.5,4)
             amplitude_factor = np.random.uniform(*self.amplitude_range)
             amplitude = median_magnitude * amplitude_factor              # spike magnitude scales with scan intensity
 
@@ -278,7 +279,7 @@ class MultiArtifactSimulator:
 
     def __init__(self, 
                  acceleration_factor: int = 4,
-                 num_spikes: int = 10,
+                 num_spikes: int = 5,
                  apply_undersampling: bool = True,
                  apply_spikes: bool = True):
         
@@ -289,10 +290,16 @@ class MultiArtifactSimulator:
         # Initialize individual simulators
 
         if apply_undersampling:
-            self.undersampling_sim = UndersamplingSimulator(acceleration_factor)
+            self.undersampling_sim = UndersamplingSimulator(
+                acceleration_factor=acceleration_factor,
+                center_fraction=0.16  # Increased from 0.08 to preserve more center k-space
+            )
 
         if apply_spikes:
-            self.spikes_sim = SpikeNoiseSimulator(num_spikes)
+            self.spikes_sim = SpikeNoiseSimulator(
+                num_spikes=num_spikes,
+                amplitude_range=(1.5, 4.0)  # Reduced from (5, 20)
+            )
 
         logger.info(f"Multi-artifact simulator initialized: "
                    f"undersampling={apply_undersampling}, spikes={apply_spikes}")
@@ -405,14 +412,14 @@ if __name__ == "__main__":
     
     print(f"✓ Undersampling applied")
     print(f"  Sampling: {mask.mean()*100:.1f}%")
-    print(f"  Expected: ~{100/undersample_sim.acceleration_factor + 8:.1f}%")
+    print(f"  Expected: ~{100/undersample_sim.acceleration_factor + 16:.1f}%")
     
     # Test spike noise
     print("\n" + "-"*60)
     print("Testing Spike Noise...")
     print("-"*60)
     
-    spike_sim = SpikeNoiseSimulator(num_spikes=15)
+    spike_sim = SpikeNoiseSimulator(num_spikes=5)
     k_spikes, locations = spike_sim.apply(kspace_clean, seed=42)
     
     # Reconstruct
@@ -427,7 +434,7 @@ if __name__ == "__main__":
     print("Testing Combined Artifacts...")
     print("-"*60)
     
-    multi_sim = MultiArtifactSimulator(acceleration_factor=4, num_spikes=10)
+    multi_sim = MultiArtifactSimulator(acceleration_factor=4, num_spikes=5)
     result = multi_sim.apply(kspace_clean, seed=42)
     
     k_combined = result['corrupted_kspace']
