@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Loss Functions for MRI Reconstruction
 
@@ -124,7 +125,7 @@ class CombinedL1SSIMLoss(nn.Module):
         self.alpha   = alpha
         self.l1      = nn.L1Loss()
         self.ssim    = SSIMLoss()
-        print(f"  Loss  →  Combined  [α={alpha:.2f} × L1  +  {1-alpha:.2f} × SSIM]")
+        print(f"  Loss  -  Combined  [alpha={alpha:.2f} * L1 + {1-alpha:.2f} * SSIM]")
 
     def forward(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
@@ -147,7 +148,7 @@ if __name__ == "__main__":
     print("=" * 55)
 
     torch.manual_seed(42)
-    pred   = torch.rand(2, 1, 256, 256)
+    pred   = torch.rand(2, 1, 256, 256).requires_grad_(True)
     target = torch.rand(2, 1, 256, 256)
 
     # SSIM loss
