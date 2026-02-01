@@ -83,7 +83,7 @@ class SSIMLoss(nn.Module):
             Scalar loss tensor.
         """
         pad = self.window_size // 2
-        w   = self.window       
+        w   = self.window.to(prediction.device, dtype=prediction.dtype)
 
         # local means (Gaussian-weighted)
         mu_x  = F.conv2d(prediction, w, padding=pad, groups=self.channel)

@@ -45,7 +45,7 @@ sys.path.insert(0, os.path.join(_SCRIPT, 'models'))
 sys.path.insert(0, os.path.join(_SCRIPT, 'utils'))
 
 from dataset import FastMRIArtifactDataset, create_train_val_datasets
-from unet import UNet
+from Unet import UNet
 from losses import CombinedL1SSIMLoss
 from metrics import compute_all_metrics
 from visualization import plot_training_curves
@@ -235,7 +235,7 @@ def main():
         init_features=config['init_features'],
     ).to(device)
 
-    criterion = CombinedL1SSIMLoss(alpha=config['loss_alpha'])
+    criterion = CombinedL1SSIMLoss(alpha=config['loss_alpha']).to(device)
     optimizer = optim.Adam(
         model.parameters(),
         lr=config['learning_rate'],
