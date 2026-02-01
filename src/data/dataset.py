@@ -326,10 +326,12 @@ if __name__ == "__main__":
 
     # auto-detect data directory
     candidates = [
+        'data/singlecoil_val',
+        'data/singlecoil_train',
+        'data/singlecoil_test',
         'data/raw/knee_singlecoil_val',
-        'data/raw/knee_singlecoil_train',
-        '../data/raw/knee_singlecoil_val',
-        '../../data/raw/knee_singlecoil_val',
+        '../data/singlecoil_val',
+        '../../data/singlecoil_val',
     ]
     data_path = None
     for c in candidates:

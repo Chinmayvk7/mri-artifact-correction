@@ -7,7 +7,6 @@ data/singlecoil_train/
 data/singlecoil_val/
 
 # Outputs
-outputs/figures/*.png
 outputs/models/*.pth
 outputs/models/*.pt
 
