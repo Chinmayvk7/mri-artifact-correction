@@ -330,128 +330,181 @@ class MultiArtifactSimulator:
         }
 
 
+def normalize_image(img):
+    img = np.abs(img)
+    img = img - img.min()
+    if img.max() > 0:
+        img = img / img.max()
+    return img
+
+
+def create_synthetic_kspace(size=256):
+    x = np.linspace(-1, 1, size)
+    y = np.linspace(-1, 1, size)
+    X, Y = np.meshgrid(x, y)
+    
+    # Create a phantom with multiple structures (simulating knee-like anatomy)
+    phantom = np.zeros((size, size), dtype=np.float64)
+    
+    # Main elliptical structure (like bone)
+    ellipse1 = ((X/0.3)**2 + (Y/0.6)**2) < 1
+    phantom[ellipse1] = 1.0
+    
+    # Inner structure (like marrow)
+    ellipse2 = ((X/0.2)**2 + (Y/0.45)**2) < 1
+    phantom[ellipse2] = 0.7
+    
+    # Add some smaller structures (like cartilage/soft tissue)
+    circle1 = ((X-0.4)**2 + (Y-0.3)**2) < 0.05
+    phantom[circle1] = 0.9
+    
+    circle2 = ((X+0.4)**2 + (Y+0.3)**2) < 0.05
+    phantom[circle2] = 0.9
+    
+    # Add subtle texture
+    np.random.seed(42)
+    texture = np.random.randn(size, size) * 0.05
+    phantom = phantom + texture * (phantom > 0)
+    phantom = np.clip(phantom, 0, 1)
+    
+    # Convert to k-space (centered)
+    kspace = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(phantom)))
+    
+    return kspace, phantom
+
+
 # Testing and we demonstrate one example here
 if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
-    import sys
-    sys.path.insert(0, 'src/data')
-    from fastmri_loader import FastMRILoader, normalize_image
     
     print("="*60)
     print("Artifact Simulator Test")
     print("="*60)
     
-    # Load sample data
-    try:
-      
-        loader = FastMRILoader("data/singlecoil_val")
-        kspace_clean, image_clean = loader.load_slice(0, 15)
-        
-        print(f"\n✓ Loaded test slice")
-        print(f"  K-space shape: {kspace_clean.shape}")
-        
-        # Test undersampling
-        print("\n" + "-"*60)
-        print("Testing Undersampling...")
-        print("-"*60)
-        
-        undersample_sim = UndersamplingSimulator(acceleration_factor=4)
-        k_under, mask = undersample_sim.apply(kspace_clean)
-        
-        # Reconstruct image (inverse FFT)
-        image_under = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(k_under))))
-        
-        print(f"✓ Undersampling applied")
-        print(f"  Sampling: {mask.mean()*100:.1f}%")
-        print(f"  Expected: ~{100/undersample_sim.acceleration_factor + 8:.1f}%")
-        
-        # Test spike noise
-        print("\n" + "-"*60)
-        print("Testing Spike Noise...")
-        print("-"*60)
-        
-        spike_sim = SpikeNoiseSimulator(num_spikes=15)
-        k_spikes, locations = spike_sim.apply(kspace_clean, seed=42)
-        
-        # Reconstruct
-        image_spikes = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(k_spikes))))
-        
-        print(f"✓ Spike noise applied")
-        print(f"  Number of spikes: {len(locations)}")
-        print(f"  Spike locations: {[loc['position'] for loc in locations[:3]]}...")
-        
-        # Test combined
-        print("\n" + "-"*60)
-        print("Testing Combined Artifacts...")
-        print("-"*60)
-        
-        multi_sim = MultiArtifactSimulator(acceleration_factor=4, num_spikes=10)
-        result = multi_sim.apply(kspace_clean, seed=42)
-        
-        k_combined = result['corrupted_kspace']
-        image_combined = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(k_combined))))
-        
-        print(f"✓ Combined artifacts applied")
-        print(f"  Metadata: {result['metadata']}")
-        
-        # Visualize all
-        print("\n" + "-"*60)
-        print("Creating Visualizations...")
-        print("-"*60)
-        
-        fig, axes = plt.subplots(2, 4, figsize=(16, 8))
-        
-        # Row 1: Images
-        axes[0, 0].imshow(normalize_image(image_clean), cmap='gray')
-        axes[0, 0].set_title('Clean Image')
-        axes[0, 0].axis('off')
-        
-        axes[0, 1].imshow(normalize_image(image_under), cmap='gray')
-        axes[0, 1].set_title(f'Undersampled (R={undersample_sim.acceleration_factor})')
-        axes[0, 1].axis('off')
-        
-        axes[0, 2].imshow(normalize_image(image_spikes), cmap='gray')
-        axes[0, 2].set_title(f'Spike Noise ({spike_sim.num_spikes} spikes)')
-        axes[0, 2].axis('off')
-        
-        axes[0, 3].imshow(normalize_image(image_combined), cmap='gray')
-        axes[0, 3].set_title('Combined Artifacts')
-        axes[0, 3].axis('off')
-        
-        # Row 2: K-space (log magnitude)
-        axes[1, 0].imshow(np.log(np.abs(kspace_clean) + 1), cmap='gray')
-        axes[1, 0].set_title('Clean K-Space')
-        axes[1, 0].axis('off')
-        
-        axes[1, 1].imshow(np.log(np.abs(k_under) + 1), cmap='gray')
-        axes[1, 1].set_title('Undersampled K-Space')
-        axes[1, 1].axis('off')
-        
-        # Mark spike locations in k-space
-        k_spikes_vis = np.log(np.abs(k_spikes) + 1)
-        axes[1, 2].imshow(k_spikes_vis, cmap='gray')
-        for loc in locations[:10]:  # Show first 10
-            y, x = loc['position']
-            axes[1, 2].plot(x, y, 'r*', markersize=8)
-        axes[1, 2].set_title('K-Space with Spikes (marked)')
-        axes[1, 2].axis('off')
-        
-        axes[1, 3].imshow(np.log(np.abs(k_combined) + 1), cmap='gray')
-        axes[1, 3].set_title('Combined K-Space')
-        axes[1, 3].axis('off')
-        
-        plt.tight_layout()
-        plt.savefig('outputs/artifact_simulation_test.png', dpi=150, bbox_inches='tight')
-        
-        print(f"✓ Visualization saved: outputs/artifact_simulation_test.png")
-        
-        print("\n" + "="*60)
-        print("All tests passed! ✓")
-        print("="*60)
-        
-    except Exception as e:
-        print(f"\n✗ Error: {str(e)}")
-        print("\nMake sure fastMRI data is loaded first!")
-        import traceback
-        traceback.print_exc()
+    # Create synthetic k-space data for demonstration
+    print("\nGenerating synthetic MRI phantom...")
+    kspace_clean, phantom = create_synthetic_kspace(256)
+    
+    print(f"\n✓ Created test phantom")
+    print(f"  K-space shape: {kspace_clean.shape}")
+    
+    # Reconstruct clean image from k-space
+    image_clean = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(kspace_clean))))
+    
+    # Test undersampling
+    print("\n" + "-"*60)
+    print("Testing Undersampling...")
+    print("-"*60)
+    
+    undersample_sim = UndersamplingSimulator(acceleration_factor=4)
+    k_under, mask = undersample_sim.apply(kspace_clean)
+    
+    # Reconstruct image (inverse FFT)
+    image_under = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(k_under))))
+    
+    print(f"✓ Undersampling applied")
+    print(f"  Sampling: {mask.mean()*100:.1f}%")
+    print(f"  Expected: ~{100/undersample_sim.acceleration_factor + 8:.1f}%")
+    
+    # Test spike noise
+    print("\n" + "-"*60)
+    print("Testing Spike Noise...")
+    print("-"*60)
+    
+    spike_sim = SpikeNoiseSimulator(num_spikes=15)
+    k_spikes, locations = spike_sim.apply(kspace_clean, seed=42)
+    
+    # Reconstruct
+    image_spikes = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(k_spikes))))
+    
+    print(f"✓ Spike noise applied")
+    print(f"  Number of spikes: {len(locations)}")
+    print(f"  Spike locations: {[loc['position'] for loc in locations[:3]]}...")
+    
+    # Test combined
+    print("\n" + "-"*60)
+    print("Testing Combined Artifacts...")
+    print("-"*60)
+    
+    multi_sim = MultiArtifactSimulator(acceleration_factor=4, num_spikes=10)
+    result = multi_sim.apply(kspace_clean, seed=42)
+    
+    k_combined = result['corrupted_kspace']
+    image_combined = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(k_combined))))
+    
+    print(f"✓ Combined artifacts applied")
+    print(f"  Metadata: {result['metadata']}")
+    
+    # Visualize all
+    print("\n" + "-"*60)
+    print("Creating Visualizations...")
+    print("-"*60)
+    
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    
+    # Row 1: Images
+    axes[0, 0].imshow(normalize_image(image_clean), cmap='gray')
+    axes[0, 0].set_title('Clean Image')
+    axes[0, 0].axis('off')
+    
+    axes[0, 1].imshow(normalize_image(image_under), cmap='gray')
+    axes[0, 1].set_title(f'Undersampled (R={undersample_sim.acceleration_factor})')
+    axes[0, 1].axis('off')
+    
+    axes[0, 2].imshow(normalize_image(image_spikes), cmap='gray')
+    axes[0, 2].set_title(f'Spike Noise ({spike_sim.num_spikes} spikes)')
+    axes[0, 2].axis('off')
+    
+    axes[0, 3].imshow(normalize_image(image_combined), cmap='gray')
+    axes[0, 3].set_title('Combined Artifacts')
+    axes[0, 3].axis('off')
+    
+    # Row 2: K-space (log magnitude with proper windowing)
+    def display_kspace(kspace_data, ax, title, spike_locs=None):
+        log_kspace = np.log1p(np.abs(kspace_data))
+        vmin, vmax = np.percentile(log_kspace, [2, 99.5])
+        ax.imshow(log_kspace, cmap='gray', vmin=vmin, vmax=vmax)
+        if spike_locs is not None:
+            for loc in spike_locs:
+                y, x = loc['position']
+                ax.plot(x, y, 'r*', markersize=10, markeredgewidth=1.5)
+        ax.set_title(title)
+        ax.axis('off')
+    
+    display_kspace(kspace_clean, axes[1, 0], 'Clean K-Space')
+    display_kspace(k_under, axes[1, 1], 'Undersampled K-Space')
+    display_kspace(k_spikes, axes[1, 2], 'K-Space with Spikes (marked)', locations)
+    display_kspace(k_combined, axes[1, 3], 'Combined K-Space')
+    
+    plt.tight_layout()
+    plt.savefig('artifact_simulation_test.png', dpi=150, bbox_inches='tight')
+    
+    print(f"✓ Visualization saved: artifact_simulation_test.png")
+    
+    # Additional figure: Show the undersampling mask
+    fig2, axes2 = plt.subplots(1, 3, figsize=(12, 4))
+    
+    axes2[0].imshow(mask, cmap='gray')
+    axes2[0].set_title('Undersampling Mask')
+    axes2[0].axis('off')
+    
+    # Show difference images
+    diff_under = np.abs(image_clean - image_under)
+    axes2[1].imshow(diff_under, cmap='hot')
+    axes2[1].set_title('Undersampling Error')
+    axes2[1].axis('off')
+    
+    diff_spikes = np.abs(image_clean - image_spikes)
+    axes2[2].imshow(diff_spikes, cmap='hot')
+    axes2[2].set_title('Spike Noise Error')
+    axes2[2].axis('off')
+    
+    plt.tight_layout()
+    plt.savefig('artifact_analysis.png', dpi=150, bbox_inches='tight')
+    
+    print(f"✓ Analysis saved: artifact_analysis.png")
+    
+    print("\n" + "="*60)
+    print("All tests passed! ✓")
+    print("="*60)
