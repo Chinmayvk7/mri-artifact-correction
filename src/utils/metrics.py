@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Evaluation Metrics for MRI Reconstruction
 
@@ -5,27 +6,25 @@ FILE: src/utils/metrics.py
 
 THREE STANDARD METRICS used in every MRI reconstruction paper:
 
-┌─────────────────────────────────────────────────────────────┐
-│  PSNR  (Peak Signal-to-Noise Ratio)                         │
-│    • Measures pixel-level accuracy                          │
-│    • Higher = better                                        │
-│    • Unit: dB (decibels)                                    │
-│    • Good MRI reconstruction: 25–35 dB                      │
-│                                                             │
-│  SSIM  (Structural Similarity Index)                        │
-│    • Measures perceptual / structural similarity            │
-│    • Range: [0, 1] — higher = better                        │
-│    • 1.0 = perfect match                                    │
-│    • Better than PSNR at capturing what humans see          │
-│                                                             │
-│  NMSE  (Normalized Mean Squared Error)                      │
-│    • Measures relative reconstruction error                 │
-│    • Lower = better                                         │
-│    • 0 = perfect reconstruction                             │
-│    • Normalized so results are comparable across scans      │
-└─────────────────────────────────────────────────────────────┘
 
-These are the EXACT metrics used in the official fastMRI benchmark,
+  PSNR  (Peak Signal-to-Noise Ratio)
+    - Measures pixel-level accuracy
+    - Higher = better
+    - Unit: dB (decibels)
+    - Good MRI reconstruction: 25-35 dB
+
+  SSIM  (Structural Similarity Index)
+    - Measures perceptual / structural similarity
+    - Range: [0, 1] - higher = better
+    - 1.0 = perfect match
+
+  NMSE  (Normalized Mean Squared Error)
+    - Measures relative reconstruction error
+    - Lower = better
+    - 0 = perfect reconstruction
+
+
+These are the EXACT metrics used in the official fastMRI benchmark.
 
 """
 
@@ -44,7 +43,7 @@ def compute_psnr(target: np.ndarray, prediction: np.ndarray) -> float:
     """
     Peak Signal-to-Noise Ratio.
 
-    Formula:  PSNR = 10 * log10(MAX² / MSE)
+    Formula:  PSNR = 10 * log10(MAX^2 / MSE)
     where MAX = dynamic range of the image.
 
     A +3 dB improvement roughly means halving the mean squared error.
@@ -63,7 +62,7 @@ def compute_psnr(target: np.ndarray, prediction: np.ndarray) -> float:
 
     data_range = target.max() - target.min()
     if data_range == 0:
-        return float('inf')   # constant image, perfect
+        return float('inf')
 
     return float(skimage_psnr(target, prediction, data_range=data_range))
 
@@ -72,7 +71,7 @@ def compute_ssim(target: np.ndarray, prediction: np.ndarray) -> float:
     """
     Structural Similarity Index.
 
-    Considers luminance, contrast, and structural information — much closer
+    Considers luminance, contrast, and structural information - much closer
     to human perception than raw pixel error.
 
         target:     Ground truth [H, W] in [0, 1].
@@ -91,7 +90,7 @@ def compute_ssim(target: np.ndarray, prediction: np.ndarray) -> float:
     return float(skimage_ssim(
         target, prediction,
         data_range=data_range,
-        win_size=7                  # 7×7 window
+        win_size=7
     ))
 
 
@@ -99,7 +98,7 @@ def compute_nmse(target: np.ndarray, prediction: np.ndarray) -> float:
     """
     Normalized Mean Squared Error.
 
-    Formula:  NMSE = ‖target − prediction‖² / ‖target‖²
+    Formula:  NMSE = ||target - prediction||^2 / ||target||^2
 
     Dividing by target energy makes results comparable across scans
     with different overall intensity levels.
@@ -201,7 +200,7 @@ if __name__ == "__main__":
     # 2) Light noise
     noisy = np.clip(target + 0.05 * rng.standard_normal(target.shape), 0, 1)
     m = compute_all_metrics(target, noisy)
-    print(f"\n  Light noise (σ=0.05):")
+    print(f"\n  Light noise (sigma=0.05):")
     print(f"    PSNR  = {m['psnr']:>10.2f} dB")
     print(f"    SSIM  = {m['ssim']:>10.4f}")
     print(f"    NMSE  = {m['nmse']:>10.6f}")
@@ -209,7 +208,7 @@ if __name__ == "__main__":
     # 3) Heavy noise
     heavy = np.clip(target + 0.30 * rng.standard_normal(target.shape), 0, 1)
     m = compute_all_metrics(target, heavy)
-    print(f"\n  Heavy noise (σ=0.30):")
+    print(f"\n  Heavy noise (sigma=0.30):")
     print(f"    PSNR  = {m['psnr']:>10.2f} dB")
     print(f"    SSIM  = {m['ssim']:>10.4f}")
     print(f"    NMSE  = {m['nmse']:>10.6f}")
@@ -219,8 +218,8 @@ if __name__ == "__main__":
     predictions_list = [noisy, heavy, target, noisy, heavy]
     stats = compute_dataset_metrics(targets_list, predictions_list)
     print(f"\n  Dataset summary (5 samples):")
-    print(f"    PSNR mean ± std = {stats['psnr']['mean']:.2f} ± {stats['psnr']['std']:.2f} dB")
-    print(f"    SSIM mean ± std = {stats['ssim']['mean']:.4f} ± {stats['ssim']['std']:.4f}")
+    print(f"    PSNR mean +/- std = {stats['psnr']['mean']:.2f} +/- {stats['psnr']['std']:.2f} dB")
+    print(f"    SSIM mean +/- std = {stats['ssim']['mean']:.4f} +/- {stats['ssim']['std']:.4f}")
 
     print("\n  ✓ All metric tests passed!")
     print("=" * 55)
