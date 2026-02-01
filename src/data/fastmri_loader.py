@@ -1,5 +1,4 @@
 '''
-
 This below code is meant for data loading interface for the NYU fastMRI dataset, which is a large-scale medical imaging dataset used for MRI reconstruction research. The goal is to make it easy to:
 
     1) Load MRI scan data from disk.
@@ -58,15 +57,24 @@ class FastMRILoader:
         with h5py.File(h5_file_path, 'r') as h5_file:
             kspace_raw = h5_file['kspace'][slice_index]
         
-        # kspace = kspace_raw['real'] + 1j* kspace_raw['imag']
-        
             if hasattr(kspace_raw, 'dtype') and kspace_raw.dtype.names:
                 kspace = kspace_raw['real'] + 1j * kspace_raw['imag']  # Synthetic data
             else:
                 kspace = np.array(kspace_raw)  # Real FastMRI data
 
-            
-            image = np.array(h5_file['reconstruction_rss'][slice_index])
+            if 'reconstruction_rss' in h5_file:
+                image = np.array(h5_file['reconstruction_rss'][slice_index])
+            elif 'reconstruction_esc' in h5_file:
+                image = np.array(h5_file['reconstruction_esc'][slice_index])
+            else:
+                image = np.abs(
+                    np.fft.fftshift(
+                        np.fft.ifft2(
+                            np.fft.ifftshift(kspace)
+                        )
+                    )
+                )
+
         return kspace.astype(np.complex64), image.astype(np.float32)   # for memomry efficiency we keep it 8bytes total per complex number and upto 7 decimal digits
 
 
@@ -77,7 +85,12 @@ class FastMRILoader:
         with h5py.File(h5_file_path, 'r') as h5_file:
             num_slices = h5_file['kspace'].shape[0]                # How many 2D images are stacked in this MRI scan ( number of slices)
             kspace_shape = h5_file['kspace'].shape[1:]             # k-space spatial shape dimension.
-            image_shape = h5_file['reconstruction_rss'].shape[1:]  # image spatial shape dimension.
+            if 'reconstruction_rss' in h5_file:
+                image_shape = h5_file['reconstruction_rss'].shape[1:]  # image spatial shape dimension.
+            elif 'reconstruction_esc' in h5_file:
+                image_shape = h5_file['reconstruction_esc'].shape[1:]
+            else:
+                image_shape = (h5_file['kspace'].shape[1], h5_file['kspace'].shape[2])
             
         return {
             'filename': h5_file_path.name,
@@ -95,15 +108,25 @@ class FastMRILoader:
         with h5py.File(h5_file_path, 'r') as h5_file:
             kspace_raw = h5_file['kspace'][:]                      # Load the entire dataset 
             
-            #kspace_volume = kspace_raw['real'] + 1j* kspace_raw['imag']
-            
             if hasattr(kspace_raw, 'dtype') and kspace_raw.dtype.names:
                 kspace_volume = kspace_raw['real'] + 1j * kspace_raw['imag']
             else:
                 kspace_volume = np.array(kspace_raw)
 
-            image_volume = np.array(h5_file['reconstruction_rss'][:])
-
+            if 'reconstruction_rss' in h5_file:
+                image_volume = np.array(h5_file['reconstruction_rss'][:])
+            elif 'reconstruction_esc' in h5_file:
+                image_volume = np.array(h5_file['reconstruction_esc'][:])
+            else:
+                image_volume = np.abs(
+                    np.fft.fftshift(
+                        np.fft.ifft2(
+                            np.fft.ifftshift(kspace_volume, axes=(-2, -1)),
+                            axes=(-2, -1)
+                        ),
+                        axes=(-2, -1)
+                    )
+                )
             
         logger.info(f"Loaded volume {h5_file_path.name}: "
                f"{kspace_volume.shape[0]} slices")                 # Confirms volume size and missing slices 
@@ -151,7 +174,6 @@ def center_crop(image: np.ndarray, target_height: int, target_width: int) -> np.
 
     else:
         raise ValueError(f"Expected 2D or 3D image, got {image.ndim}D")
-
 
 
 if __name__ == "__main__":                        # Test the FASTMRI loader.
