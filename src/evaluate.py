@@ -1,6 +1,6 @@
 """
 Evaluation Script — MRI Artifact Correction
-=============================================
+
 FILE: src/evaluate.py
 
 Run AFTER training is complete.
@@ -12,10 +12,10 @@ USAGE :
     python src/evaluate.py --image_size 320                   # must match training
 
 WHAT IT PRODUCES:
-    outputs/results/evaluation_results.json   ← all numbers (paste into README)
+    outputs/results/evaluation_results.json   ← all numbers
     outputs/figures/fig01_data_overview.png
     outputs/figures/fig02_artifact_examples.png
-    outputs/figures/fig03_training_curves.png   (re-plotted from history)
+    outputs/figures/fig03_training_curves.png   
     outputs/figures/fig04_comparison_grid.png   ← main results figure
     outputs/figures/fig05_kspace_analysis.png
     outputs/figures/fig06_metrics_distribution.png
@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.join(_SCRIPT, 'utils'))
 
 from fastmri_loader import FastMRILoader
 from artifacts      import MultiArtifactSimulator
-from unet           import UNet
+from Unet           import UNet
 from metrics        import compute_all_metrics
 from visualization  import (
     plot_data_overview,
@@ -289,7 +289,7 @@ def main():
     # fig02: artifact examples
     print("     fig02 …", end=' ')
     # We need isolated artifact versions for one slice.
-    # We will try creating them; if MultiArtifactSimulator doesn't support.
+    # We will try creating them.
     # extreme params, fall back to showing the combined version twice.
     fi0, si0 = eval_slices[0]
     ks_clean0, img_clean0 = loader.load_slice(fi0, si0)
@@ -378,14 +378,13 @@ def main():
     )
 
  
-    # DONE
+
     print("\n" + "═" * 65)
     print("  EVALUATION COMPLETE")
     print("═" * 65)
     print(f"      Results  →  outputs/results/evaluation_results.json")
     print(f"      Figures  →  outputs/figures/  (7 figures)")
     print(f"     Key result  :  +{results['improvement']['psnr_db']:.2f} dB PSNR improvement")
-    print(f"\n  → Next step:  Write README.md using these numbers & figures")
     print("═" * 65)
 
 
