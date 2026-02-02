@@ -8,12 +8,13 @@ FIXED VERSION: Uses RESIDUAL LEARNING
     We use:     output = corrupted + model(corrupted)
     
     This makes the model learn the CORRECTION, not the full image.
+    Much easier to train and avoids mode collapse.
 
 USAGE  (run from project root):
     python src/train.py                          # defaults
-    python src/train.py --epochs 100             
-    python src/train.py --batch_size 2           
-    python src/train.py --resume                
+    python src/train.py --epochs 100             # more epochs
+    python src/train.py --batch_size 2           # if GPU OOM
+    python src/train.py --resume                 # resume from checkpoint
 """
 
 import torch
@@ -29,7 +30,7 @@ from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
 
-
+# path setup so imports work from project root
 _SCRIPT = os.path.dirname(os.path.abspath(__file__))
 _ROOT   = os.path.dirname(_SCRIPT)
 os.chdir(_ROOT)
@@ -49,25 +50,25 @@ from visualization import plot_training_curves
 DEFAULT_CONFIG = dict(
     # Data
     data_path            = 'data/singlecoil_val',
-    total_slices         = 200,      # MORE DATA for better learning
+    total_slices         = 200, 
     val_fraction         = 0.2,
     image_size           = 256,
 
-    # Artifacts - REDUCED severity
+    # Artifacts
     acceleration_factor  = 4,
-    num_spikes           = 5,       
+    num_spikes           = 5,        # Reduced from 10
 
     # Model
     in_channels          = 1,
     out_channels         = 1,
     init_features        = 32,
 
-    # Training 
+    # Training - LOWER learning rate to avoid collapse
     batch_size           = 4,
-    num_epochs           = 100,     
-    learning_rate        = 1e-4,     
+    num_epochs           = 100,      # More epochs
+    learning_rate        = 1e-4,  
     weight_decay         = 1e-5,
-    loss_alpha           = 0.84,     
+    loss_alpha           = 0.84,     # More weight on L1 (pixel accuracy)
 
     # LR Schedule
     scheduler_patience   = 10,
@@ -80,7 +81,7 @@ DEFAULT_CONFIG = dict(
     # DataLoader
     num_workers          = 2,
     
-    # Residual learning
+    # NEW: Residual learning
     use_residual         = True,
 )
 
@@ -368,7 +369,7 @@ def main():
             torch.save(model.state_dict(), models / f'checkpoint_epoch{epoch+1}.pth')
             print(f"     checkpoint_epoch{epoch+1}.pth saved")
 
-        # Best model by PSNR
+        # model by PSNR
         if val_psnr > best_psnr:
             best_psnr = val_psnr
             best_val_loss = val_loss

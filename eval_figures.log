@@ -1,0 +1,61 @@
+INFO:fastmri_loader:Found 199 MRI volumes in data/singlecoil_val
+INFO:artifacts:Undersampling simulator initialized: R=4, center=16.0%
+INFO:artifacts:Spike noise simulator initialized: 5 spikes, amplitude 1.5-4.0×
+INFO:artifacts:Multi-artifact simulator initialized: undersampling=True, spikes=True
+
+=================================================================
+  MRI ARTIFACT CORRECTION - EVALUATION
+  2026-02-02  06:18:11
+=================================================================
+
+  RESIDUAL LEARNING: ENABLED
+  Device : cuda
+
+  Loading model  ...  outputs/models/best_model.pth
+     Model loaded successfully
+
+  Data   : data/singlecoil_val
+  Artifacts: 4x acceleration, 5 spikes
+
+  Evaluating 20 slices ...
+  Eval:   0%|                                  | 0/20 [00:00<?, ?it/s]  Eval:   5%|#3                        | 1/20 [00:00<00:04,  4.16it/s]  Eval:  30%|#######8                  | 6/20 [00:00<00:00, 20.27it/s]  Eval:  55%|#############7           | 11/20 [00:00<00:00, 28.49it/s]  Eval:  80%|####################     | 16/20 [00:00<00:00, 33.09it/s]  Eval: 100%|#########################| 20/20 [00:00<00:00, 29.76it/s]
+INFO:artifacts:Undersampling simulator initialized: R=4, center=16.0%
+INFO:artifacts:Spike noise simulator initialized: 0 spikes, amplitude 1.5-4.0×
+INFO:artifacts:Multi-artifact simulator initialized: undersampling=True, spikes=True
+INFO:artifacts:Undersampling simulator initialized: R=1, center=16.0%
+INFO:artifacts:Spike noise simulator initialized: 5 spikes, amplitude 1.5-4.0×
+INFO:artifacts:Multi-artifact simulator initialized: undersampling=True, spikes=True
+
+========================================================================
+  RESULTS
+========================================================================
+  Metric    Baseline (zero-filled)      U-Net                       Improvement
+------------------------------------------------------------------------
+  PSNR      11.25 +/- 2.72 dB              16.22 +/- 3.19 dB              +4.97 dB
+  SSIM      0.0057 +/- 0.0063                0.3388 +/- 0.0971                +0.3331
+  NMSE      1.000000 +/- 0.000000          0.323239 +/- 0.054456          -0.676761
+========================================================================
+
+  SUCCESS: Model improves PSNR by 4.97 dB!
+
+  Results JSON  ->  outputs\results\evaluation_results.json
+
+  Generating figures ...
+     fig01 ... error: plot_data_overview() got an unexpected keyword argument 'save_path'
+     fig02 ... error: plot_artifact_examples() got an unexpected keyword argument 'save_path'
+     fig03 ... error: plot_training_curves() got an unexpected keyword argument 'save_path'
+     fig04 ... error: plot_comparison_grid() got an unexpected keyword argument 'save_path'
+     fig05 ... error: plot_kspace_analysis() got an unexpected keyword argument 'save_path'
+     fig06 ... error: plot_metrics_distribution() got an unexpected keyword argument 'save_path'
+     fig07 ... error: plot_failure_cases() got an unexpected keyword argument 'save_path'
+
+=================================================================
+  EVALUATION COMPLETE
+=================================================================
+     Results  ->  outputs/results/evaluation_results.json
+     Figures  ->  outputs/figures/  (7 figures)
+
+     Key result  :  +4.97 dB PSNR improvement
+
+  -> Next step: Generate more samples
+=================================================================

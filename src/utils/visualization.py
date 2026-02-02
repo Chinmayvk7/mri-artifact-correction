@@ -10,21 +10,18 @@ FILE: src/utils/visualization.py
     fig05_kspace_analysis.png        — k-space domain before/after
     fig06_metrics_distribution.png   — box-plots of metrics vs baseline
     fig07_failure_cases.png          — honest analysis of worst results
-
-
 """
 
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')                        
 import matplotlib.pyplot as plt
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
+from pathlib import Path
 import os
 
 
-
-# Makes every figure look consistent & professional
-
+# Makes every figure look consistent
 plt.rcParams.update({
     'font.family':     'sans-serif',
     'font.size':       11,
@@ -40,36 +37,36 @@ plt.rcParams.update({
 })
 
 # Determine output directory
-_THIS_DIR   = os.path.dirname(os.path.abspath(__file__))        # utils/
-_SRC_DIR    = os.path.dirname(_THIS_DIR)                        # src/
-_PROJECT_DIR= os.path.dirname(_SRC_DIR)                         # project root
+_THIS_DIR   = os.path.dirname(os.path.abspath(__file__))
+_SRC_DIR    = os.path.dirname(_THIS_DIR)
+_PROJECT_DIR= os.path.dirname(_SRC_DIR)
 OUTPUT_DIR  = os.path.join(_PROJECT_DIR, 'outputs', 'figures')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-def _save(fig: plt.Figure, filename: str) -> str:
-    """Save figure to outputs/figures/ and close it to free memory."""
-    path = os.path.join(OUTPUT_DIR, filename)
+def _save(fig: plt.Figure, filename: str, save_path: Optional[Union[str, Path]] = None) -> str:
+    """Save figure and close it to free memory."""
+    if save_path is not None:
+        path = str(save_path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    else:
+        path = os.path.join(OUTPUT_DIR, filename)
+    
     fig.savefig(path, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close(fig)
-    print(f"      ✓ saved  {path}")
+    print(f"done")
     return path
 
 
-
-# FIG 01 — Data Overview
+# Data Overview
 def plot_data_overview(
     images: List[np.ndarray],
     title:    str = "FastMRI Knee Dataset — Sample Slices",
     filename: str = "fig01_data_overview.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
-    A neat grid of raw MRI slices showing dataset diversity.
-
-
-        images:   List of 2D numpy arrays (magnitude images, any range).
-        title:    Figure title.
-        filename: Output filename.
+    A grid of raw MRI slices showing dataset diversity.
     """
     n    = min(len(images), 12)
     cols = 4
@@ -90,8 +87,7 @@ def plot_data_overview(
         else:
             ax.set_visible(False)
 
-    _save(fig, filename)
-
+    _save(fig, filename, save_path)
 
 
 # FIG 02 — Artifact Examples
@@ -101,25 +97,19 @@ def plot_artifact_examples(
     spike_noise:  np.ndarray,
     combined:     np.ndarray,
     filename:     str = "fig02_artifact_examples.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
     Side-by-side: Clean | Undersampled | Spike Noise | Combined.
-
-        clean:        Clean ground-truth image [H, W].
-        undersampled: Image with undersampling only [H, W].
-        spike_noise:  Image with spike noise only [H, W].
-        combined:     Image with both artifacts [H, W].
-        filename:     Output filename.
     """
     images = [clean, undersampled, spike_noise, combined]
     titles = [
         'Clean\n(Ground Truth)',
-        'Undersampled\n(4× acceleration)',
+        'Undersampled\n(4x acceleration)',
         'Spike Noise\nOnly',
         'Combined\n(Both Artifacts)',
     ]
 
-    # shared intensity range for comparison
     vmin = min(img.min() for img in images)
     vmax = max(img.max() for img in images)
 
@@ -134,28 +124,17 @@ def plot_artifact_examples(
     fig.colorbar(im, ax=axes, orientation='vertical',
                  fraction=0.018, pad=0.04, label='Signal Intensity')
 
-    _save(fig, filename)
-
+    _save(fig, filename, save_path)
 
 
 # FIG 03 — Training Curves
-
 def plot_training_curves(
     history:  Dict[str, list],
     filename: str = "fig03_training_curves.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
     Loss, PSNR, and SSIM over training epochs.
-
-    Verifies:
-      • Loss is decreasing  →  model is learning
-      • Train–val gap is small  →  not overfitting
-      • PSNR / SSIM are rising  →  reconstruction quality improves
-
-        history: Dict with keys:
-                   'train_loss', 'val_loss'    
-                   'val_psnr', 'val_ssim'        
-
     """
     has_psnr = 'val_psnr' in history and len(history.get('val_psnr', [])) > 0
     has_ssim = 'val_ssim' in history and len(history.get('val_ssim', [])) > 0
@@ -191,7 +170,6 @@ def plot_training_curves(
         ax.set_xlabel('Epoch')
         ax.set_ylabel('PSNR (dB)')
         ax.set_title('Validation PSNR')
-        # highlight best
         best_idx = int(np.argmax(history['val_psnr']))
         ax.axhline(history['val_psnr'][best_idx], color='gray', ls='--', alpha=0.5)
         ax.annotate(f"best: {history['val_psnr'][best_idx]:.2f} dB",
@@ -215,8 +193,7 @@ def plot_training_curves(
                     xytext=(10, -18), textcoords='offset points',
                     fontsize=9, color='#8E44AD', fontweight='bold')
 
-    _save(fig, filename)
-
+    _save(fig, filename, save_path)
 
 
 # FIG 04 — Main Comparison Grid
@@ -227,24 +204,17 @@ def plot_comparison_grid(
     metrics_list:      List[Dict[str, float]],
     num_examples:      int = 5,
     filename:          str = "fig04_comparison_grid.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
     Each row = one test example.  Four columns:
-        Corrupted Input  |  Model Output  |  Ground Truth  |  Error Map
-
-    The error map (column 4) uses a 'hot' colormap so bright spots = big errors.
-
-        corrupted_images:  List of [H, W] corrupted inputs.
-        predicted_images:  List of [H, W] model outputs.
-        target_images:     List of [H, W] ground truths.
-        metrics_list:      List of dicts with 'psnr' and 'ssim' per example.
-        num_examples:      Number of rows to show.
+      Corrupted | Model Output | Ground Truth | Error Map
     """
     n = min(num_examples, len(corrupted_images))
 
     fig, axes = plt.subplots(n, 4, figsize=(17, 4.2 * n))
     fig.suptitle('MRI Artifact Correction — Results',
-                 fontsize=18, fontweight='bold', y=1.02)
+                 fontsize=16, fontweight='bold', y=1.01)
 
     if n == 1:
         axes = axes.reshape(1, -1)
@@ -257,7 +227,6 @@ def plot_comparison_grid(
         tgt  = target_images[i]
         err  = np.abs(pred - tgt)
 
-        # shared range for columns 0-2
         vmin = min(corr.min(), pred.min(), tgt.min())
         vmax = max(corr.max(), pred.max(), tgt.max())
 
@@ -269,12 +238,10 @@ def plot_comparison_grid(
         for ax in axes[i]:
             ax.axis('off')
 
-        # column headers (top row only)
         if i == 0:
             for ax, title in zip(axes[i], col_titles):
                 ax.set_title(title, fontsize=13, fontweight='bold', pad=8)
 
-        # row label with metrics
         if i < len(metrics_list):
             m = metrics_list[i]
             axes[i, 0].set_ylabel(
@@ -284,8 +251,7 @@ def plot_comparison_grid(
             )
 
     plt.tight_layout()
-    _save(fig, filename)
-
+    _save(fig, filename, save_path)
 
 
 # FIG 05 — K-Space Analysis
@@ -296,29 +262,17 @@ def plot_kspace_analysis(
     corrupted_image:     np.ndarray,
     reconstructed_image: np.ndarray,
     filename:            str = "fig05_kspace_analysis.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
     Two-row figure showing the problem in BOTH domains.
-
     Row 1 (K-Space):  Clean  |  Corrupted  |  Difference
     Row 2 (Image):    Clean  |  Corrupted  |  Model Output
-
-    NOTE: K-space is shown on a LOG scale because its dynamic range is huge
-    Without log, we would only see the bright center dot.
-
-
-        clean_kspace:        Complex [H, W] — clean k-space.
-        corrupted_kspace:    Complex [H, W] — corrupted k-space.
-        clean_image:         Real [H, W] — clean magnitude image.
-        corrupted_image:     Real [H, W] — corrupted magnitude image.
-        reconstructed_image: Real [H, W] — model output.
-
     """
     fig, axes = plt.subplots(2, 3, figsize=(15, 10), constrained_layout=True)
     fig.suptitle('K-Space and Image Domain Analysis',
                  fontsize=16, fontweight='bold')
 
-    # log-magnitude of k-space
     ks_clean = np.log1p(np.abs(clean_kspace))
     ks_corr  = np.log1p(np.abs(corrupted_kspace))
     ks_diff  = np.log1p(np.abs(clean_kspace - corrupted_kspace))
@@ -353,14 +307,12 @@ def plot_kspace_analysis(
     axes[1, 2].set_title('Model Output',   fontweight='bold')
     axes[1, 2].axis('off')
 
-    # row labels
     axes[0, 0].set_ylabel('K-Space Domain', fontsize=13, rotation=90,
                            labelpad=12, va='center', fontweight='bold')
     axes[1, 0].set_ylabel('Image Domain',  fontsize=13, rotation=90,
                            labelpad=12, va='center', fontweight='bold')
 
-    _save(fig, filename)
-
+    _save(fig, filename, save_path)
 
 
 # FIG 06 — Metrics Distribution (Box Plots)
@@ -371,21 +323,10 @@ def plot_metrics_distribution(
     baseline_psnr:  Optional[float] = None,
     baseline_ssim:  Optional[float] = None,
     filename: str = "fig06_metrics_distribution.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
     Box plots of each metric across the entire test set.
-
-    Shows not just the mean but the SPREAD — tells us how consistent is the model
-    A tight box = consistent performance across different slices.
-    The dashed red line = baseline (zero-filled), so that we can see the gap and compare.
-
-    
-        psnr_values:   List of per-slice PSNR values.
-        ssim_values:   List of per-slice SSIM values.
-        nmse_values:   List of per-slice NMSE values.
-        baseline_psnr: Mean PSNR of zero-filled baseline
-        baseline_ssim: Mean SSIM of zero-filled baseline.
-  
     """
     fig, axes = plt.subplots(1, 3, figsize=(15, 5), constrained_layout=True)
     fig.suptitle('Metric Distributions — Test Set',
@@ -414,7 +355,6 @@ def plot_metrics_distribution(
                        label=f'Baseline: {baseline:.2f}')
             ax.legend(frameon=True, fontsize=9)
 
-
         mean_val = np.mean(vals)
         ax.axhline(mean_val, color=color, ls='-', linewidth=1, alpha=0.4)
         ax.annotate(f'mean={mean_val:.2f}', xy=(1.28, mean_val),
@@ -423,8 +363,7 @@ def plot_metrics_distribution(
         if ylabel == 'SSIM':
             ax.set_ylim(0, 1.08)
 
-    _save(fig, filename)
-
+    _save(fig, filename, save_path)
 
 
 # FIG 07 — Failure Cases
@@ -435,18 +374,11 @@ def plot_failure_cases(
     metrics_list:      List[Dict[str, float]],
     num_cases:         int = 3,
     filename:          str = "fig07_failure_cases.png",
+    save_path: Optional[Union[str, Path]] = None,
 ):
     """
     Show the WORST results (lowest PSNR).
-
-    
-        corrupted_images:  All corrupted images.
-        predicted_images:  All model outputs.
-        target_images:     All ground truths.
-        metrics_list:      Per-example metrics dicts.
-        num_cases:         How many failure cases to display.
     """
-    # sort ascending by PSNR → worst first
     order = sorted(range(len(metrics_list)),
                    key=lambda i: metrics_list[i]['psnr'])
     worst = order[:min(num_cases, len(order))]
@@ -490,4 +422,4 @@ def plot_failure_cases(
         )
 
     plt.tight_layout()
-    _save(fig, filename)
+    _save(fig, filename, save_path)
