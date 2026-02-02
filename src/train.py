@@ -1,6 +1,6 @@
 """
 Training Script — MRI Artifact Correction with U-Net
-
+======================================================
 FILE: src/train.py
 
 FIXED VERSION: Uses RESIDUAL LEARNING
@@ -50,11 +50,11 @@ from visualization import plot_training_curves
 DEFAULT_CONFIG = dict(
     # Data
     data_path            = 'data/singlecoil_val',
-    total_slices         = 200, 
+    total_slices         = 200,      # MORE DATA for better learning
     val_fraction         = 0.2,
     image_size           = 256,
 
-    # Artifacts
+    # Artifacts - REDUCED severity for easier learning
     acceleration_factor  = 4,
     num_spikes           = 5,        # Reduced from 10
 
@@ -66,7 +66,7 @@ DEFAULT_CONFIG = dict(
     # Training - LOWER learning rate to avoid collapse
     batch_size           = 4,
     num_epochs           = 100,      # More epochs
-    learning_rate        = 1e-4,  
+    learning_rate        = 1e-4,     # REDUCED from 1e-3
     weight_decay         = 1e-5,
     loss_alpha           = 0.84,     # More weight on L1 (pixel accuracy)
 
@@ -369,7 +369,7 @@ def main():
             torch.save(model.state_dict(), models / f'checkpoint_epoch{epoch+1}.pth')
             print(f"     checkpoint_epoch{epoch+1}.pth saved")
 
-        # model by PSNR
+        # Best model by PSNR (more meaningful than loss)
         if val_psnr > best_psnr:
             best_psnr = val_psnr
             best_val_loss = val_loss

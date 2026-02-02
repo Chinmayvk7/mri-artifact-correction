@@ -21,7 +21,7 @@ from pathlib import Path
 import os
 
 
-# Makes every figure look consistent
+# Makes every figure look consistent & professional
 plt.rcParams.update({
     'font.family':     'sans-serif',
     'font.size':       11,
@@ -58,7 +58,7 @@ def _save(fig: plt.Figure, filename: str, save_path: Optional[Union[str, Path]] 
     return path
 
 
-# Data Overview
+# FIG 01 — Data Overview
 def plot_data_overview(
     images: List[np.ndarray],
     title:    str = "FastMRI Knee Dataset — Sample Slices",
@@ -66,7 +66,7 @@ def plot_data_overview(
     save_path: Optional[Union[str, Path]] = None,
 ):
     """
-    A grid of raw MRI slices showing dataset diversity.
+    A neat grid of raw MRI slices showing dataset diversity.
     """
     n    = min(len(images), 12)
     cols = 4
