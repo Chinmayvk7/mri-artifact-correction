@@ -23,5 +23,3 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
-outputs/
-*.png
