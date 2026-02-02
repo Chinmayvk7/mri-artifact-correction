@@ -85,10 +85,10 @@ Traditional reconstruction methods like **GRAPPA** and **Compressed Sensing** re
     +-----------+   +---------------+   +--------+   +--------+---------+
                                                     |
                                                     v
-                   +--------------------------------+------------------+
-                   |  - Undersampling (4x accel)                          |
-                   |  - Spike Noise (5 spikes)                            |
-                   +-----------------------------------------------------+
+                         +--------------------------+---------------------------+
+                         |              - Undersampling (4x accel)              |
+                         |              - Spike Noise (5 spikes)                |
+                         +------------------------------------------------------+
 
                                                     |
                                                     v
@@ -99,7 +99,7 @@ Traditional reconstruction methods like **GRAPPA** and **Compressed Sensing** re
                                          +-----------+-------------+
                                                      |
                                                      v
-                           +----------------+    Loss (L1 + SSIM)   +-----------+
+                           +----------------+    Loss (L1 + SSIM)    +-----------+
                            | Reconstructed  | <--------------------- | Ground    |
                            |    Image       |                        | Truth     |
                            +----------------+                        +-----------+
@@ -157,11 +157,21 @@ corrupted_kspace[y, x] += spike_value
 - **Amplitude**: 1.5-4× median k-space magnitude
 - **Effect**: Herringbone/striping patterns in image domain
 
-### Network Architecture
+# Network Architecture
+
+
+<p align="center">
+  <img src="outputs/figures/flowchart.png" alt="K-Space Analysis" width="85%"/>
+  <br>
+  <em>Figure : U-Net architecture with Attention, ASPP, and Deep Supervision</em>
+</p>
+
 
 **U-Net** encoder-decoder with skip connections:
 
 ```
+
+
 +======================================================================================================+
 |                                     DETAILED U-NET ARCHITECTURE                                      |
 +======================================================================================================+
